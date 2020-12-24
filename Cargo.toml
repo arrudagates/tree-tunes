@@ -1,0 +1,13 @@
+[package]
+name = "rustree"
+version = "0.1.0"
+authors = ["gabriel.a <arrudagates@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+walkdir = "2.3.1"
+libmpv = "2.0.1"
+libmath = "0.2.1"
+crossterm = "0.18"

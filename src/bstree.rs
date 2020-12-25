@@ -44,12 +44,12 @@ impl<T: Ord> BST<T> {
         }
     }
 
- //   pub fn is_empty(&self) -> bool {
- //       match self {
-  //          BST::Empty => true,
-  //          BST::Leaf { .. } => false,
-  //      }
-  //  }
+    //   pub fn is_empty(&self) -> bool {
+    //       match self {
+    //          BST::Empty => true,
+    //          BST::Leaf { .. } => false,
+    //      }
+    //  }
 
     pub fn find(&self, find_name: T) -> Option<PathBuf> {
         match self {
@@ -66,21 +66,6 @@ impl<T: Ord> BST<T> {
             BST::Empty => None,
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
 
 impl<T: Ord> Default for BST<T> {
@@ -88,16 +73,6 @@ impl<T: Ord> Default for BST<T> {
         Self::new()
     }
 }
-
-
-
-
-
-
-
-
-
-
 
 #[cfg(test)]
 mod test {

@@ -1,16 +1,16 @@
-use libmpv::{FileState, Mpv};
-use std::ffi::OsString;
-use math::round;
-use walkdir::{DirEntry, WalkDir};
 use audiotags::*;
-use std::io::{stdout, Write};
-use std::io::{self, Read};
 use crossterm::{
+    event::read,
     execute,
     style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
-    ExecutableCommand, Result,
-    event::read, terminal
+    terminal, ExecutableCommand, Result,
 };
+use libmpv::{FileState, Mpv};
+use math::round;
+use std::ffi::OsString;
+use std::io::{self, Read};
+use std::io::{stdout, Write};
+use walkdir::{DirEntry, WalkDir};
 
 mod bstree;
 
@@ -20,6 +20,35 @@ fn is_flac(entry: &DirEntry) -> bool {
         .to_str()
         .map(|s| s.ends_with(".flac"))
         .unwrap_or(false)
+}
+
+fn rinsert(
+    mut tree: bstree::BST<String>,
+    mut names: Vec<(OsString, i32)>,
+    paths: Vec<(i32, std::path::PathBuf)>,
+) -> bstree::BST<String> {
+    if names.len() > 0 {
+        let middle = round::floor((names.len() / 2) as f64, -1);
+        tree.insert(
+            Tag::default()
+                .read_from_path(paths[names[middle as usize].1 as usize].1.to_path_buf())
+                .unwrap()
+                .title()
+                .unwrap_or(names[middle as usize].0.to_str().unwrap())
+                .to_string()
+                .to_lowercase()
+                .replace(" ", "")
+                .chars()
+                .filter(|&c| "abcdefghijklmnopqrstuvwxyz1234567890".contains(c))
+                .collect(),
+            paths[names[middle as usize].1 as usize].1.to_path_buf(),
+        );
+        names.remove(middle as usize);
+        let names2 = names.split_off(middle as usize);
+        tree = rinsert(tree, names, paths.clone());
+        tree = rinsert(tree, names2, paths.clone());
+    }
+    return tree;
 }
 
 fn main() -> Result<()> {
@@ -34,76 +63,60 @@ fn main() -> Result<()> {
     for entry in walker.filter(|e| is_flac(&e.as_ref().unwrap())) {
         let file = entry.unwrap();
         names.push((file.file_name().to_os_string(), i));
-        paths.push((i,file.path().to_path_buf()));
+        paths.push((i, file.path().to_path_buf()));
         i = i + 1;
-        //tree.insert(file.file_name().to_os_string(), file.path().to_path_buf());
     }
     names.sort();
-    i = 0;
-    while i < names.len(){
-        let middle = round::floor((names.len() / 2) as f64, -1);
-        println!("{}", Tag::default().read_from_path(paths[names[middle as usize].1].1.to_path_buf()).unwrap().title().unwrap_or(names[middle as usize].0.to_str().unwrap()).to_string());
-       // tree.insert(names[middle as usize].0.to_os_string(), paths[names[middle as usize].1].1.to_path_buf());
-tree.insert(Tag::default().read_from_path(paths[names[middle as usize].1].1.to_path_buf()).unwrap().title().unwrap_or(names[middle as usize].0.to_str().unwrap()).to_string().to_lowercase().replace(" ", ""), paths[names[middle as usize].1].1.to_path_buf());
-        names.remove(middle as usize);
-     //   i = i + 1;
-    }
-    //let middle = round::floor((names.len() / 2) as f64, -1);
-   // println!("{:#?}", paths[names[middle as usize].1].1);
-   //println!("{:#?}", tree);
+
+    tree = rinsert(tree, names, paths);
+    println!("{:#?}", tree);
+
 
     let mpv = Mpv::new().unwrap();
+    mpv.set_property("vo", "null").unwrap();
+    loop {
+        stdout()
+            // .execute(terminal::Clear(terminal::ClearType::All))?
+            .execute(SetForegroundColor(Color::Blue))?
+            .execute(Print("Comando: "))?
+            .execute(ResetColor)?;
 
-loop{
+        let mut buffer = String::new();
+        std::io::stdin().read_line(&mut buffer).unwrap();
 
+        match buffer.trim().to_lowercase().as_str() {
+            "play" => {
+                stdout()
+                    // .execute(terminal::Clear(terminal::ClearType::All))?
+                    .execute(SetForegroundColor(Color::Blue))?
+                    .execute(Print("Que música quer ouvir? "))?
+                    .execute(ResetColor)?;
 
-    stdout()
-      // .execute(terminal::Clear(terminal::ClearType::All))?
-        .execute(SetForegroundColor(Color::Blue))?
-        .execute(Print("Comando: "))?
-        .execute(ResetColor)?;
+                let mut buffer = String::new();
+                std::io::stdin().read_line(&mut buffer).unwrap();
+               
+                match tree.find(buffer.trim().to_string().to_lowercase().replace(" ", "")) {
+                    Some(x) => {
+                        mpv.playlist_load_files(&[(
+                            x.into_os_string().as_os_str().to_str().unwrap(),
+                            FileState::AppendPlay,
+                            None,
+                        )])
+                        .unwrap();
+                    }
+                    None => println!("Música não encontrada"),
+                }
+            },
+            "stop" => {
+                mpv.playlist_clear().unwrap();
+                mpv.playlist_remove_current().unwrap();
+            },
+            "pause" => mpv.pause().unwrap(),
+            "resume" => mpv.unpause().unwrap(),
 
-let mut buffer = String::new();
-    let stdin = io::stdin(); // We get `Stdin` here.
-std::io::stdin().read_line(&mut buffer).unwrap();
-
-    match buffer.trim().to_lowercase().as_str() {
-        "play" => {
-           stdout()
-      // .execute(terminal::Clear(terminal::ClearType::All))?
-        .execute(SetForegroundColor(Color::Blue))?
-        .execute(Print("Que música quer ouvir? "))?
-        .execute(ResetColor)?;
-
-let mut buffer = String::new();
-    let stdin = io::stdin(); // We get `Stdin` here.
-std::io::stdin().read_line(&mut buffer).unwrap();
-//println!("{}", buffer);
-
-   mpv.playlist_load_files(&[(
-       tree.find(buffer.trim().to_string().to_lowercase().replace(" ", ""))
-           .unwrap()
-           .into_os_string()
-           .as_os_str()
-           .to_str()
-           .unwrap(),
-       FileState::AppendPlay,
-       None,)])
-        .unwrap();
-
-        },
-        "stop" => {
-            mpv.playlist_clear();
-            mpv.playlist_remove_current();
+            _ => (),
         }
-        _ => ()
     }
-
-
-
-
-}
-    
 
     Ok(())
 }

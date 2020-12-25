@@ -56,10 +56,23 @@ tree.insert(Tag::default().read_from_path(paths[names[middle as usize].1].1.to_p
 
 loop{
 
+
     stdout()
       // .execute(terminal::Clear(terminal::ClearType::All))?
         .execute(SetForegroundColor(Color::Blue))?
-        .execute(Print("Que música quer ouvir?"))?
+        .execute(Print("Comando: "))?
+        .execute(ResetColor)?;
+
+let mut buffer = String::new();
+    let stdin = io::stdin(); // We get `Stdin` here.
+std::io::stdin().read_line(&mut buffer).unwrap();
+
+    match buffer.trim().to_lowercase().as_str() {
+        "play" => {
+           stdout()
+      // .execute(terminal::Clear(terminal::ClearType::All))?
+        .execute(SetForegroundColor(Color::Blue))?
+        .execute(Print("Que música quer ouvir? "))?
         .execute(ResetColor)?;
 
 let mut buffer = String::new();
@@ -76,7 +89,18 @@ std::io::stdin().read_line(&mut buffer).unwrap();
            .unwrap(),
        FileState::AppendPlay,
        None,)])
-   .unwrap();
+        .unwrap();
+
+        },
+        "stop" => {
+            mpv.playlist_clear();
+            mpv.playlist_remove_current();
+        }
+        _ => ()
+    }
+
+
+
 
 }
     

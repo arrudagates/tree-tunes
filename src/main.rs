@@ -2,7 +2,7 @@ use libmpv::{FileState, Mpv};
 use std::ffi::OsString;
 use math::round;
 use walkdir::{DirEntry, WalkDir};
-
+use audiotags::*;
 use std::io::{stdout, Write};
 use std::io::{self, Read};
 use crossterm::{
@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     let mut names = vec![];
     let mut paths = vec![];
 
-    let walker = WalkDir::new("/home/arruda/Music/AJR").into_iter();
+    let walker = WalkDir::new("/home/arruda/Music/").into_iter();
 
     let mut i = 0;
 
@@ -41,8 +41,10 @@ fn main() -> Result<()> {
     names.sort();
     i = 0;
     while i < names.len(){
-       let middle = round::floor((names.len() / 2) as f64, -1);
-        tree.insert(names[middle as usize].0.to_os_string(), paths[names[middle as usize].1].1.to_path_buf());
+        let middle = round::floor((names.len() / 2) as f64, -1);
+        println!("{}", Tag::default().read_from_path(paths[names[middle as usize].1].1.to_path_buf()).unwrap().title().unwrap_or(names[middle as usize].0.to_str().unwrap()).to_string());
+       // tree.insert(names[middle as usize].0.to_os_string(), paths[names[middle as usize].1].1.to_path_buf());
+tree.insert(Tag::default().read_from_path(paths[names[middle as usize].1].1.to_path_buf()).unwrap().title().unwrap_or(names[middle as usize].0.to_str().unwrap()).to_string().to_lowercase().replace(" ", ""), paths[names[middle as usize].1].1.to_path_buf());
         names.remove(middle as usize);
      //   i = i + 1;
     }
@@ -55,7 +57,7 @@ fn main() -> Result<()> {
 loop{
 
     stdout()
-       .execute(terminal::Clear(terminal::ClearType::All))?
+      // .execute(terminal::Clear(terminal::ClearType::All))?
         .execute(SetForegroundColor(Color::Blue))?
         .execute(Print("Que música quer ouvir?"))?
         .execute(ResetColor)?;
@@ -63,10 +65,10 @@ loop{
 let mut buffer = String::new();
     let stdin = io::stdin(); // We get `Stdin` here.
 std::io::stdin().read_line(&mut buffer).unwrap();
-println!("{}", buffer);
+//println!("{}", buffer);
 
    mpv.playlist_load_files(&[(
-       tree.find(OsString::from(buffer.trim()))
+       tree.find(buffer.trim().to_string().to_lowercase().replace(" ", ""))
            .unwrap()
            .into_os_string()
            .as_os_str()

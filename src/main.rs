@@ -5,12 +5,14 @@ use crossterm::{
     style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal, ExecutableCommand, Result,
 };
-use libmpv::{FileState, Mpv};
+use libmpv::{FileState, Mpv, events::*};
 use math::round;
 use std::ffi::OsString;
 use std::io::{self, Read};
 use std::io::{stdout, Write};
 use walkdir::{DirEntry, WalkDir};
+use std::thread;
+use crossbeam::*;
 
 mod bstree;
 
@@ -69,17 +71,36 @@ fn main() -> Result<()> {
     names.sort();
 
     tree = rinsert(tree, names, paths);
-    println!("{:#?}", tree);
+    //println!("{:#?}", tree);
 
 
     let mpv = Mpv::new().unwrap();
     mpv.set_property("vo", "null").unwrap();
-    loop {
-        stdout()
-            // .execute(terminal::Clear(terminal::ClearType::All))?
-            .execute(SetForegroundColor(Color::Blue))?
-            .execute(Print("Comando: "))?
-            .execute(ResetColor)?;
+   let mut ev_ctx = mpv.create_event_context();
+    ev_ctx.disable_deprecated_events();
+
+
+
+stdout().execute(crossterm::cursor::SavePosition).unwrap().execute(terminal::Clear(terminal::ClearType::All)).unwrap();
+
+
+
+  crossbeam::scope(|scope| {
+      scope.spawn(|_| {
+
+          loop {
+              stdout()
+                //  .execute(terminal::Clear(terminal::ClearType::All)).unwrap()
+                .execute(crossterm::cursor::MoveTo(0,4)).unwrap()
+                 .execute(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap()
+                    .execute(SetForegroundColor(Color::Blue)).unwrap()
+                   // .execute(Print(format!("{}", &mpv.get_property::<String>("media-title").unwrap_or("Nothing Playing".to_string())))).unwrap()
+//                   .execute(crossterm::cursor::RestorePosition).unwrap()
+                .execute(crossterm::cursor::MoveTo(0, terminal::size().unwrap().1)).unwrap()
+            .execute(SetForegroundColor(Color::Blue)).unwrap()
+            .execute(Print("Comando: ")).unwrap()
+         // .execute(crossterm::cursor::SavePosition).unwrap()
+            .execute(ResetColor);
 
         let mut buffer = String::new();
         std::io::stdin().read_line(&mut buffer).unwrap();
@@ -88,9 +109,9 @@ fn main() -> Result<()> {
             "play" => {
                 stdout()
                     // .execute(terminal::Clear(terminal::ClearType::All))?
-                    .execute(SetForegroundColor(Color::Blue))?
-                    .execute(Print("Que música quer ouvir? "))?
-                    .execute(ResetColor)?;
+                    .execute(SetForegroundColor(Color::Blue)).unwrap()
+                    .execute(Print("Que música quer ouvir? ")).unwrap()
+                    .execute(ResetColor);
 
                 let mut buffer = String::new();
                 std::io::stdin().read_line(&mut buffer).unwrap();
@@ -113,10 +134,35 @@ fn main() -> Result<()> {
             },
             "pause" => mpv.pause().unwrap(),
             "resume" => mpv.unpause().unwrap(),
-
+            "next" => mpv.playlist_next_force().unwrap_or(()),
+            "previous" => mpv.playlist_previous_weak().unwrap_or(()),
             _ => (),
         }
     }
+ });
 
-    Ok(())
+                   scope.spawn(|_| loop {
+                      let ev = ev_ctx.wait_event(600.).unwrap();
+
+            match ev {
+                Ok(Event::StartFile) | Ok(Event::PropertyChange{name: "pause", .. }) => {
+                    //crossterm::cursor::MoveTo(0,0);
+                    stdout()
+                    // .execute(terminal::Clear(terminal::ClearType::All))?
+                        .execute(crossterm::cursor::MoveTo(0,1)).unwrap()
+                       .execute(terminal::Clear(terminal::ClearType::CurrentLine)).unwrap()
+                    .execute(SetForegroundColor(Color::Blue)).unwrap()
+                    .execute(Print(format!("{}", &mpv.get_property::<String>("media-title").unwrap()))).unwrap()
+                                                                                                       .execute(ResetColor).unwrap()
+      .execute(crossterm::cursor::MoveTo(0, terminal::size().unwrap().1)).unwrap()
+                       .execute(Print("Comando: ")).unwrap();
+                    //.execute(crossterm::cursor::RestorePosition);
+                    //break;
+                },
+              _ => (),
+            }
+                  
+                   });
+    }).unwrap();
+Ok(())
 }

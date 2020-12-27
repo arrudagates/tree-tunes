@@ -1,18 +1,13 @@
 use audiotags::*;
 use crossterm::{
-    event::read,
-    execute,
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
+    style::{Color, Print, ResetColor, SetForegroundColor},
     terminal, ExecutableCommand, Result,
 };
 use libmpv::{FileState, Mpv, events::*};
 use math::round;
 use std::ffi::OsString;
-use std::io::{self, Read};
-use std::io::{stdout, Write};
+use std::io::stdout;
 use walkdir::{DirEntry, WalkDir};
-use std::thread;
-use crossbeam::*;
 
 mod bstree;
 
@@ -77,30 +72,24 @@ fn main() -> Result<()> {
     let mpv = Mpv::new().unwrap();
     mpv.set_property("vo", "null").unwrap();
    let mut ev_ctx = mpv.create_event_context();
-    ev_ctx.disable_deprecated_events();
+    ev_ctx.disable_deprecated_events().unwrap();
 
 
 
 stdout().execute(crossterm::cursor::SavePosition).unwrap().execute(terminal::Clear(terminal::ClearType::All)).unwrap();
-
-
 
   crossbeam::scope(|scope| {
       scope.spawn(|_| {
 
           loop {
               stdout()
-                //  .execute(terminal::Clear(terminal::ClearType::All)).unwrap()
                 .execute(crossterm::cursor::MoveTo(0,4)).unwrap()
                  .execute(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap()
                     .execute(SetForegroundColor(Color::Blue)).unwrap()
-                   // .execute(Print(format!("{}", &mpv.get_property::<String>("media-title").unwrap_or("Nothing Playing".to_string())))).unwrap()
-//                   .execute(crossterm::cursor::RestorePosition).unwrap()
                 .execute(crossterm::cursor::MoveTo(0, terminal::size().unwrap().1)).unwrap()
             .execute(SetForegroundColor(Color::Blue)).unwrap()
             .execute(Print("Comando: ")).unwrap()
-         // .execute(crossterm::cursor::SavePosition).unwrap()
-            .execute(ResetColor);
+            .execute(ResetColor).unwrap();
 
         let mut buffer = String::new();
         std::io::stdin().read_line(&mut buffer).unwrap();
@@ -108,10 +97,9 @@ stdout().execute(crossterm::cursor::SavePosition).unwrap().execute(terminal::Cle
         match buffer.trim().to_lowercase().as_str() {
             "play" => {
                 stdout()
-                    // .execute(terminal::Clear(terminal::ClearType::All))?
                     .execute(SetForegroundColor(Color::Blue)).unwrap()
                     .execute(Print("Que música quer ouvir? ")).unwrap()
-                    .execute(ResetColor);
+                    .execute(ResetColor).unwrap();
 
                 let mut buffer = String::new();
                 std::io::stdin().read_line(&mut buffer).unwrap();
@@ -136,6 +124,17 @@ stdout().execute(crossterm::cursor::SavePosition).unwrap().execute(terminal::Cle
             "resume" => mpv.unpause().unwrap(),
             "next" => mpv.playlist_next_force().unwrap_or(()),
             "previous" => mpv.playlist_previous_weak().unwrap_or(()),
+            "volume" =>{
+                stdout()
+                    .execute(SetForegroundColor(Color::Blue)).unwrap()
+                    .execute(Print("Digite o volume ")).unwrap()
+                    .execute(ResetColor).unwrap();
+
+                let mut buffer = String::new();
+                std::io::stdin().read_line(&mut buffer).unwrap();
+
+               mpv.set_property("volume", buffer.trim().to_string().parse::<i64>().unwrap()).unwrap();
+            },
             _ => (),
         }
     }
@@ -146,9 +145,7 @@ stdout().execute(crossterm::cursor::SavePosition).unwrap().execute(terminal::Cle
 
             match ev {
                 Ok(Event::StartFile) | Ok(Event::PropertyChange{name: "pause", .. }) => {
-                    //crossterm::cursor::MoveTo(0,0);
                     stdout()
-                    // .execute(terminal::Clear(terminal::ClearType::All))?
                         .execute(crossterm::cursor::MoveTo(0,1)).unwrap()
                        .execute(terminal::Clear(terminal::ClearType::CurrentLine)).unwrap()
                     .execute(SetForegroundColor(Color::Blue)).unwrap()
@@ -156,8 +153,7 @@ stdout().execute(crossterm::cursor::SavePosition).unwrap().execute(terminal::Cle
                                                                                                        .execute(ResetColor).unwrap()
       .execute(crossterm::cursor::MoveTo(0, terminal::size().unwrap().1)).unwrap()
                        .execute(Print("Comando: ")).unwrap();
-                    //.execute(crossterm::cursor::RestorePosition);
-                    //break;
+
                 },
               _ => (),
             }

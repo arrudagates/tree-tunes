@@ -44,12 +44,6 @@ impl<T: Ord> BST<T> {
         }
     }
 
-    //   pub fn is_empty(&self) -> bool {
-    //       match self {
-    //          BST::Empty => true,
-    //          BST::Leaf { .. } => false,
-    //      }
-    //  }
 
     pub fn find(&self, find_name: T) -> Option<PathBuf> {
         match self {
@@ -80,20 +74,21 @@ mod test {
 
     #[test]
     fn create() {
-        //let mut t1 = BST::new();
-        //t1.insert(1);
-        //t1.insert(2);
-        //println!("{:?}", t1)
+        let mut t1 = BST::new();
+        t1.insert("nome de teste", PathBuf::from("./music.flac"));
+
+        println!("{:?}", t1)
     }
 
     #[test]
     fn find() {
-        //assert_eq!(1, 0);
-        // let mut t1 = BST::new();
-        //t1.insert(3);
-        //t1.insert(1);
-        //t1.insert(2);
-        //assert_eq!(true, t1.find(2));
-        //assert_eq!(false, t1.find(5));
+
+        let mut t1 = BST::new();
+      t1.insert("nome de teste", PathBuf::from("./music.flac"));
+        t1.insert("nome de teste1", PathBuf::from("./music.flac"));
+        assert_eq!(PathBuf::from("./music.flac"), t1.find("nome de teste").unwrap());
+        assert_eq!(PathBuf::from("./music.flac"), t1.find("nome de teste1").unwrap());
+        assert_eq!(None, t1.find("nome de teste2"));
+
     }
 }
